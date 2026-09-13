@@ -1,13 +1,13 @@
 /* Pure simulation: rooms, power, music box and both attackers. */
 class Night {
-  static rooms = ['vaskerom', 'kjokken', 'stua', 'gang', 'stage', 'alvar'];
+  static rooms = ['vaskerom', 'kjokken', 'stua', 'gang', 'stage', 'alvar', 'danielroom'];
   static connections = {
     vaskerom: ['kjokken'], kjokken: ['vaskerom', 'stua', 'gang'],
     stua: ['kjokken', 'gang'], gang: ['kjokken', 'stua', 'stage', 'alvar', 'office'],
     stage: ['gang'], alvar: ['gang'], office: ['gang']
   };
   constructor(level = 1, random = Math.random) {
-    this.level = Math.max(1, Math.min(5, level)); this.random = random;
+    this.level = Math.max(1, Math.min(6, level)); this.random = random;
     this.time = 0; this.power = 100; this.door = false; this.light = false;
     this.monitor = false; this.camera = 'stage'; this.room = 'stage';
     this.washStage = 1; this.moveIn = 10; this.attack = 0; this.blockedFor = 0;

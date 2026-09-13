@@ -50,7 +50,7 @@ test('Power failure opens door, switches off lights/cameras, and leads to loss',
   n.toggle('door'); assert.equal(n.door, false); advance(n, 10); assert.equal(n.status, 'lost');
 });
 test('Every night is winnable with timely defense and continuous camera use', () => {
-  for (let level = 1; level <= 5; level++) for (const random of [.1, .3, .6, .9]) {
+  for (let level = 1; level <= 6; level++) for (const random of [.1, .3, .6, .9]) {
     const n = new Night(level, () => random); n.monitor = true;
     for (let i = 0; i < 5000 && n.status === 'playing'; i++) {
       n.door = n.room === 'office'; n.selectCamera('alvar'); n.setWinding(n.musicBox < 90); n.tick(.05);

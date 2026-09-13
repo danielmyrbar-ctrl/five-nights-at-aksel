@@ -1,6 +1,6 @@
 # Five Nights at Aksel
 
-Et uoffisielt fanskrekkspill med fem netter, brukerens rombilder og lydfiler.
+Et uoffisielt fanskrekkspill med seks netter, brukerens rombilder og lydfiler.
 
 Spill: https://danielmyrbar-ctrl.github.io/five-nights-at-aksel/
 
@@ -21,7 +21,7 @@ Hvis boksen blir tom, er hendelsen irreversibel: Alvar vises halvtransparent ove
 | D / A | Kontordør |
 | E / Q | Ganglys |
 | Mellomrom | Kameraer |
-| 1–6 | Velg kamera |
+| 1–7 | Velg kamera |
 | Escape | Pause |
 | Hold museknapp / berøring på MUSIC BOX | Trekk opp musikkboks |
 | Hold Enter / mellomrom med MUSIC BOX i fokus | Trekk opp med tastatur |
@@ -47,7 +47,7 @@ python3 -m http.server 8080
 Åpne http://localhost:8080. Test simulering, vinnbarhet, Alvar og lydkanaler med:
 
 ```sh
-node --test engine.test.js audio.test.js memories.test.js
+node --test engine.test.js audio.test.js memories.test.js ending.test.js
 ```
 
 `engine.js` er simuleringen; `game.js` håndterer grafikk og kontroller. Fremgang lagres lokalt. Bildene og lydfilene er levert av prosjektets eier og gis ingen separat gjenbrukslisens her. Prosjektet er ikke tilknyttet eller godkjent av skaperne av Five Nights at Freddy's.
@@ -59,3 +59,13 @@ Etter hver overlevd natt åpnes ett av fem spillbare 8-bit-minner. Flytt med pil
 Hvert minne har en egen rominndeling, gjenstandsplassering og del av den fiktive historien. 18 % sjanse per minne gir en skjult Daniel-hendelse når du utforsker høyre del av rommet. Den er ikke nødvendig for å fullføre. Ingen hemmelighet sletter fremgang.
 
 Daniel kan fra natt 2 dukke opp etter at kameraet senkes (7 % sjanse, minst 35 sekunder inn og 50 sekunders nedkjøling). Han følger ikke dørene: åpne kameraet igjen innen fem sekunder for å se bort. Alvar-hendelsen har prioritet. `daniel3.png` er skikkelsen, `daniel2.png` nærbildet, og `daniel1.jpg` det sjeldne røde minneglimtet.
+
+## Bilsekvens, natt 6 og kamera 07 (versjon 5)
+
+Etter minnet fra natt 5 vises 06:00 før bildet fader over til `introcar.mp4` med `ending.mp3`. Begge bilvideoene er alltid lydløse. Når introen slutter vises `velgbil.jpg` og «gå til bil». Knappen spiller `walktocar.mp4`. Deretter blir det svart, og `car not started.png` fader inn. Etter 2,5 sekunder med det ferdig innfadede bildet vises «start bil».
+
+Hvert bilforsøk velger tilfeldig mellom de kompatible kopiene av `start1.wav` og `start2.wav`. `car trying to start.jpg` vises til den valgte lyden faktisk er ferdig. Så vises bilen uten lys igjen. Du kan forsøke ubegrenset mange ganger. Etter første ferdige forsøk kan du velge «gå inn igjen»: bilde og musikk fader ut over tre sekunder, natt 6 låses opp og starter. Natt 6 har høyere vanskelighetsgrad og et kort sjette minne. Pause og lyd av/på finnes også under bilsekvensen.
+
+Kamera 07, «Daniel rom», ligger i sirkelen under Alvar-rommet på kartet. Bildet er svart. `danielrom-compatible.mp3` (fra `danielrom.wav`) looper gjennom hele natten, også når kameraet ikke er valgt. Den blir bare hørbar når skjermen er oppe på kamera 07.
+
+Menymusikken strømmes fra HTML-lydspilleren før resten av spillet lastes, uten å vente på at hele lydfilen blir dekodet. Nettleserens krav om første klikk gjelder fortsatt der automatisk lyd er blokkert.
