@@ -1,19 +1,22 @@
 /* Persistent loop sources keep the music box in time while inaudible. */
 const AUDIO_FILES = {
-  office: 'office ambiance.wav', menu: 'menu.mp3', jingle: 'horror jingle.mp3',
-  camera: 'camswitch.wav', light: 'light.wav', arrival: 'knocks.wav', door: 'door.wav',
-  musicbox: 'musicbox.wav', rewind: 'rewind.wav', angry: 'angryalvar.wav', scare: 'jumpscare.mp3'
+  office: 'office ambiance-compatible.mp3', menu: 'menu.mp3', jingle: 'horror jingle.mp3',
+  camera: 'camswitch-compatible.mp3', light: 'light-compatible.mp3', arrival: 'knocks-compatible.mp3', door: 'door-compatible.mp3',
+  musicbox: 'musicbox-compatible.mp3', rewind: 'rewind-compatible.mp3', angry: 'angryalvar-compatible.mp3', scare: 'jumpscare.mp3'
 };
 class Sound {
   constructor() { this.buffers = {}; this.loops = {}; this.shots = new Set(); this.muted = false; }
   async load(progress) {
     this.ctx = new (window.AudioContext || window.webkitAudioContext)();
     this.master = this.ctx.createGain(); this.master.gain.value = .65; this.master.connect(this.ctx.destination);
-    let count = 0;
+    this.start().catch(() => {});
+    let count = 0; this.failures = [];
     await Promise.all(Object.entries(AUDIO_FILES).map(async ([id, path]) => {
+      try {
       const response = await fetch(encodeURI(path));
       if (!response.ok) throw new Error(path);
       this.buffers[id] = await this.ctx.decodeAudioData(await response.arrayBuffer());
+      } catch (error) { this.failures.push(path); console.warn('Could not load sound:', path, error); }
       progress(++count, Object.keys(AUDIO_FILES).length);
     }));
   }
@@ -39,6 +42,12 @@ class Sound {
     source.start();
   }
   stopShots() { for (const s of this.shots) s.stop(); this.shots.clear(); }
+  chip(note=0) {
+    if(!this.ctx || !this.master) return;
+    const o=this.ctx.createOscillator(),g=this.ctx.createGain();o.type='square';o.frequency.value=[130.81,155.56,196,123.47][note%4];
+    g.gain.setValueAtTime(.025,this.ctx.currentTime);g.gain.exponentialRampToValueAtTime(.001,this.ctx.currentTime+.22);
+    o.connect(g).connect(this.master);o.start();o.stop(this.ctx.currentTime+.25);o.onended=()=>{o.disconnect();g.disconnect();};
+  }
   resetNight() { this.stopShots(); for (const id of Object.keys(this.loops)) this.stopLoop(id); }
   setMuted(value) { this.muted = value; if (this.master) this.master.gain.value = value ? 0 : .65; }
   sync(mode, game) {

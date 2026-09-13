@@ -1,6 +1,12 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const Night = require('./engine');
+test('Daniel can appear after camera closes; looking away clears him, doors do not',()=>{
+ const n=new Night(2,()=>0);n.danielCooldown=0;n.monitor=true;n.toggle('monitor');assert.equal(n.daniel,true);
+ n.toggle('door');n.tick(1);assert.equal(n.daniel,true);n.toggle('monitor');assert.equal(n.daniel,false);
+ n.danielCooldown=0;n.toggle('monitor');advance(n,5.1);assert.equal(n.killer,'daniel');
+ const first=new Night(1,()=>0);first.danielCooldown=0;first.monitor=true;first.toggle('monitor');assert.equal(first.daniel,false);
+});
 function advance(n, seconds) { for (let t = 0; t < seconds; t += .05) n.tick(.05); }
 
 test('Normal office uses no power; every powered device draws power', () => {

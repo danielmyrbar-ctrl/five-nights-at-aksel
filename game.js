@@ -16,6 +16,31 @@ const images = new Map();
 try { unlocked = Math.max(1, Math.min(5, Number(localStorage.getItem('aksel-night')) || 1)); } catch {}
 
 const sound = new Sound();
+let memory = null, memoryCleared = false, memoryBeat = 0, memoryDirection = null;
+const memoryView = new MemoryView($('memoryCanvas'), images);
+function beginMemory() {
+  memory = new MemoryGame(game.level); mode = 'memory'; paused = false; memoryBeat = 0;
+  sound.resetNight(); memoryDirection = null;
+  $('modal').hidden = $('hud').hidden = $('controls').hidden = $('cameraUI').hidden = true;
+  $('memoryPanel').hidden = false; document.body.classList.remove('camera');
+  $('memoryTitle').textContent = memory.story.title;
+  $('memoryFinish').hidden = true;
+  $('memoryCanvas').focus();
+}
+$('memoryFinish').onclick = () => {
+  if (!memory?.done) return;
+  memoryCleared = true; memory = null; mode = 'play';
+  $('memoryPanel').hidden = true; finish();
+};
+const memoryKeys = {arrowup:[0,-1],w:[0,-1],arrowdown:[0,1],s:[0,1],arrowleft:[-1,0],a:[-1,0],arrowright:[1,0],d:[1,0]};
+$('memoryPause').onclick = togglePause;
+for (const b of document.querySelectorAll('[data-move]')) {
+  b.onpointerdown = e => {e.preventDefault(); if(mode!=='memory'||paused)return;memoryDirection=memoryKeys[b.dataset.move];memory.move(...memoryDirection);b.setPointerCapture(e.pointerId);};
+  for(const event of ['pointerup','pointercancel','lostpointercapture']) b.addEventListener(event,()=>memoryDirection=null);
+}
+window.addEventListener('keyup',e=>{if(memoryKeys[e.key.toLowerCase()]) memoryDirection=null;});
+window.addEventListener('blur',()=>memoryDirection=null);
+
 
 async function preload() {
   const files = [...new Set(Object.values(ASSETS).flatMap(value => typeof value === 'string' ? [value] : Object.values(value)))];
@@ -32,7 +57,8 @@ async function preload() {
       $('loadstatus').textContent = `LASTER BILDER · ${loaded} / ${files.length}`;
     }
   }
-  await Promise.all([Promise.all(Array.from({ length: 4 }, worker)), sound.load(() => {}).catch(error => failures.push('Lyd: ' + error.message))]);
+  sound.load(() => {}).catch(error => console.warn('Audio unavailable:', error));
+  await Promise.all(Array.from({ length: 4 }, worker));
   ready = failures.length === 0;
   $('start').disabled = $('continue').disabled = !ready;
   $('loadstatus').textContent = ready ? 'ALLE KAMERAER TILKOBLET' : 'Kunne ikke laste: ' + failures.join(', ') + '. Last siden på nytt.';
@@ -92,7 +118,8 @@ function render(dt) {
     if (glitchLeft > 0) staticNoise(4);
     $('scene').dataset.view = 'start' + variant;
   } else if (scareLeft > 0) {
-    if (game.killer === 'alvar') drawAlvar(true);
+    if (game.killer === 'daniel') drawPhoto(ASSETS.danielFace, { shake: 30, zoom: 1.15 });
+    else if (game.killer === 'alvar') drawAlvar(true);
     else drawPhoto(ASSETS.jumpscare, { shake: 35, zoom: 1.12 });
     staticNoise(2);
     $('scene').dataset.view = 'jumpscare';
@@ -105,7 +132,8 @@ function render(dt) {
       $('scene').dataset.view = game.camera + ':' + state;
     } else {
       drawPhoto(ASSETS.office[game.officeState], { shade: game.power <= 0 ? .97 : .06 });
-      $('scene').dataset.view = 'office:' + game.officeState;
+      if(game.daniel){ctx.save();ctx.globalAlpha=.8;drawPhoto(ASSETS.danielFigure,{zoom:.85});ctx.restore();ctx.fillStyle='#d8ca8e';ctx.font='16px monospace';ctx.textAlign='center';ctx.fillText('SE BORT',w/2,h*.82);ctx.textAlign='start';}
+      $('scene').dataset.view = game.daniel?'office:daniel':'office:' + game.officeState;
     }
   }
   const vignette = ctx.createRadialGradient(w / 2, h / 2, w * .2, w / 2, h / 2, Math.max(w, h) * .7);
@@ -149,6 +177,7 @@ async function start(level) {
   if (!ready) return;
   try { await sound.start(); } catch { $('mute').textContent = 'LYD UTILGJENGELIG'; }
   sound.resetNight();
+  memoryCleared = false; memory = null; $('memoryPanel').hidden = true;
   game = new Night(level); mode = 'play'; paused = false; scareLeft = 0;
   $('overlay').hidden = $('modal').hidden = true;
   $('hud').hidden = $('controls').hidden = false;
@@ -162,12 +191,14 @@ function modal(label, title, description, button) {
 function finish() {
   paused = true; document.body.classList.remove('scaring');
   if (game.status === 'won') {
+    if (!memoryCleared) { beginMemory(); return; }
     unlocked = Math.max(unlocked, Math.min(5, game.level + 1));
     try { localStorage.setItem('aksel-night', unlocked); } catch {}
     modal('NATT ' + game.level + ' FULLFØRT', '06:00', game.level === 5 ? 'Du overlevde alle fem nettene hos Aksel.' : 'Du overlevde. Neste natt beveger Aksel seg raskere.', game.level === 5 ? 'SPILL IGJEN' : 'SPILL NATT ' + (game.level + 1));
-  } else { sound.stopShots(); sound.play('jingle'); modal('SIGNAL TAPT', 'HAN FANT DEG', game.killer === 'alvar' ? 'Musikkboksen gikk tom. Hold inne MUSIC BOX på Alvar-kameraet før den tømmes.' : game.power <= 0 ? 'Strømmen gikk. Vanlig kontorvisning bruker ikke strøm. Slå av utstyret når du ikke trenger det.' : 'Når Aksel står utenfor kontoret, har du bare noen sekunder på å lukke døren. Bankingen varsler at han har kommet. Bruk lyset for å sjekke når han har gått.', 'PRØV IGJEN'); }
+  } else { sound.stopShots(); sound.play('jingle'); modal('SIGNAL TAPT', 'HAN FANT DEG', game.killer === 'daniel' ? 'Daniel følger ikke dørene. Åpne kameraene for å se bort før han kommer nærmere.' : game.killer === 'alvar' ? 'Musikkboksen gikk tom. Hold inne MUSIC BOX på Alvar-kameraet før den tømmes.' : game.power <= 0 ? 'Strømmen gikk. Vanlig kontorvisning bruker ikke strøm. Slå av utstyret når du ikke trenger det.' : 'Når Aksel står utenfor kontoret, har du bare noen sekunder på å lukke døren. Bankingen varsler at han har kommet. Bruk lyset for å sjekke når han har gått.', 'PRØV IGJEN'); }
 }
 function togglePause() {
+  if(mode==='memory'){ paused=!paused;memoryDirection=null;if(paused)sound.ctx?.suspend();else sound.ctx?.resume();return; }
   if (mode !== 'play' || game.status !== 'playing') return;
   game.setWinding(false);
   paused = !paused;
@@ -176,7 +207,7 @@ function togglePause() {
   ui();
 }
 function menu() {
-  sound.resetNight(); $('denied').hidden = true;
+  sound.resetNight(); memory=null; $('memoryPanel').hidden=true; $('denied').hidden = true;
   game = null; mode = 'menu'; paused = false; scareLeft = 0;
   $('modal').hidden = $('hud').hidden = $('controls').hidden = $('cameraUI').hidden = true;
   $('overlay').hidden = false; document.body.className = '';
@@ -204,6 +235,7 @@ rooms.forEach((room, i) => {
   $('mapbuttons').appendChild(b);
 });
 window.addEventListener('keydown', e => {
+  if(mode==='memory'){ const k=e.key.toLowerCase(); if(memoryKeys[k]){e.preventDefault();if(!paused){memoryDirection=memoryKeys[k];memory.move(...memoryDirection);}} if(k==='escape'&&!e.repeat)togglePause();return; }
   if (e.target.id === 'wind' && [' ', 'Enter'].includes(e.key)) { e.preventDefault(); if (!paused) game?.setWinding(true); return; }
   if (e.repeat || e.target.tagName === 'INPUT') return;
   const k = e.key.toLowerCase();
@@ -214,6 +246,7 @@ window.addEventListener('keydown', e => {
   else if (/^[1-6]$/.test(k) && game?.monitor && !paused) { game.selectCamera(rooms[Number(k) - 1].id); signalLeft = .14; ui(); }
 });
 document.addEventListener('visibilitychange', () => {
+  if(document.hidden && mode==='memory' && !paused)togglePause();
   if (document.hidden && mode === 'play' && !paused && game.status === 'playing') togglePause();
 });
 function frame(ms) {
@@ -229,10 +262,20 @@ function frame(ms) {
     else if (game.status === 'lost') { scareLeft = Math.max(0, scareLeft - dt); if (!scareLeft) finish(); }
     if (frameNo++ % 3 === 0) ui();
   }
+  if(mode==='memory' && memory) {
+    if(!paused){memory.tick(dt);if(memoryDirection)memory.move(...memoryDirection);memoryBeat-=dt;if(memoryBeat<=0){sound.chip(Math.floor(memory.age)%4);memoryBeat=.65;}if(memory.note!==undefined){sound.chip(memory.note);delete memory.note;}}
+    memoryView.draw(memory);
+    $('memoryText').textContent=paused?'PAUSE / ESC FOR Å FORTSETTE':memory.messageFor>0?memory.message:memory.story.task;
+    $('memoryCount').textContent=memory.collected.length+'/3 · '+(memory.collected.length===3?'GÅ TIL STOLEN ØVERST TIL HØYRE':memory.story.task);
+    $('memoryFinish').hidden=!memory.done;
+  }
   sound.sync(mode, game);
   render(dt); requestAnimationFrame(frame);
 }
-$('enableSound').onclick = async () => { await sound.start(); $('enableSound').hidden = true; };
+// Attempt autoplay, and unlock automatically on the first ordinary interaction.
+const unlockAudio = () => { if (!paused) sound.start().catch(() => {}); };
+window.addEventListener('pointerdown', unlockAudio, { capture: true });
+window.addEventListener('keydown', unlockAudio, { capture: true });
 $('wind').addEventListener('pointerdown', e => { e.preventDefault(); if (!paused) game?.setWinding(true); $('wind').setPointerCapture(e.pointerId); });
 for (const event of ['pointerup', 'pointercancel', 'lostpointercapture']) $('wind').addEventListener(event, () => game?.setWinding(false));
 window.addEventListener('keyup', e => { if ([' ', 'Enter'].includes(e.key)) game?.setWinding(false); });

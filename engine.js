@@ -14,6 +14,7 @@ class Night {
     this.blackout = 0; this.status = 'playing'; this.events = [];
     this.musicBox = 100; this.winding = false; this.alvarAngry = false;
     this.alvarIn = null; this.killer = null; this.deniedFor = 0;
+    this.daniel = false; this.danielStare = 0; this.danielCooldown = 35;
     this.route = random() < .5
       ? ['gang', 'kjokken', 'vaskerom', 'kjokken', 'stua', 'gang', 'office']
       : ['gang', 'alvar', 'gang', 'stua', 'gang', 'office'];
@@ -34,6 +35,12 @@ class Night {
     if (this.alvarAngry && kind !== 'monitor') { this.deny(); return; }
     if (this.power <= 0 && !this.alvarAngry) return;
     this[kind] = !this[kind];
+    if (kind === 'monitor') {
+      if (this.monitor) { this.daniel = false; this.danielStare = 0; }
+      else if (this.level >= 2 && !this.alvarAngry && this.danielCooldown <= 0 && this.room !== 'office' && this.random() < .07) {
+        this.daniel = true; this.danielStare = 0; this.danielCooldown = 50; this.events.push('daniel');
+      }
+    }
     if (!this.monitor) this.winding = false;
     this.events.push(kind);
   }
@@ -71,12 +78,14 @@ class Night {
   }
   lose(killer) { this.killer = killer; this.status = 'lost'; this.winding = false; this.events.push('scare'); }
   releaseAlvar() {
+    this.daniel = false; this.danielStare = 0;
     this.musicBox = 0; this.alvarAngry = true; this.alvarIn = 20 + this.random() * 30;
     this.winding = false; this.light = false; this.door = false; this.events.push('alvar');
   }
   tick(dt) {
     if (this.status !== 'playing' || !Number.isFinite(dt) || dt <= 0) return;
     this.time = Math.min(240, this.time + dt); this.deniedFor = Math.max(0, this.deniedFor - dt);
+    this.danielCooldown = Math.max(0, this.danielCooldown - dt);
     if (this.alvarAngry) {
       this.alvarIn -= dt;
       if (this.alvarIn <= 0) this.lose('alvar');
@@ -85,6 +94,7 @@ class Night {
     if (this.time >= 240) { this.status = 'won'; this.winding = false; this.events.push('win'); return; }
     this.musicBox = Math.max(0, Math.min(100, this.musicBox + dt * ((this.winding && this.canWind ? 19 : 0) - this.boxDrain)));
     if (this.musicBox <= 0) { this.releaseAlvar(); return; }
+    if (this.daniel && !this.monitor) { this.danielStare += dt; if (this.danielStare >= 5) { this.lose('daniel'); return; } }
     this.power = Math.max(0, this.power - dt * this.drain);
     if (this.power <= 0) {
       if (!this.blackout) { this.door = this.light = this.monitor = this.winding = false; this.events.push('blackout'); }

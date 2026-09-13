@@ -26,7 +26,7 @@ Hvis boksen blir tom, er hendelsen irreversibel: Alvar vises halvtransparent ove
 | Hold museknapp / berøring på MUSIC BOX | Trekk opp musikkboks |
 | Hold Enter / mellomrom med MUSIC BOX i fokus | Trekk opp med tastatur |
 
-Trykk «Aktiver menylyd» for menymusikk. Start aktiverer også lyd. Nettleseren krever et klikk før lyd kan spilles. Lydknappen demper alle lyder. Pause stopper både simulering og lyd.
+Menymusikken forsøker å starte automatisk. Hvis nettleseren blokkerer automatisk lyd, aktiveres den ved første vanlige klikk eller tastetrykk. Ingen egen aktiveringsknapp kreves. Lydknappen demper alle lyder. Pause stopper både simulering og lyd.
 
 ## Lyd og bilder
 
@@ -34,7 +34,7 @@ Trykk «Aktiver menylyd» for menymusikk. Start aktiverer også lyd. Nettleseren
 
 `assets.js` kobler til originalbildene. Startskjerm 1 vises lengst med korte glitcher til 2 og 3. Alvar-bildet beskjæres i Canvas: ansikt på kameraene, overkropp i jumpscaren. Originalbildet endres ikke.
 
-Alle bilder og lydfiler lastes før Start aktiveres. Første innlasting kan ta litt tid.
+Bildene lastes før Start aktiveres. Lydene lastes uavhengig: en lydfeil kan ikke låse Start. RF64/WAV-originalene er bevart, men spillet bruker kompatible MP3-kopier.
 
 ## Kjør og test
 
@@ -47,7 +47,15 @@ python3 -m http.server 8080
 Åpne http://localhost:8080. Test simulering, vinnbarhet, Alvar og lydkanaler med:
 
 ```sh
-node --test engine.test.js audio.test.js
+node --test engine.test.js audio.test.js memories.test.js
 ```
 
 `engine.js` er simuleringen; `game.js` håndterer grafikk og kontroller. Fremgang lagres lokalt. Bildene og lydfilene er levert av prosjektets eier og gis ingen separat gjenbrukslisens her. Prosjektet er ikke tilknyttet eller godkjent av skaperne av Five Nights at Freddy's.
+
+## Minner og Daniel (versjon 4)
+
+Etter hver overlevd natt åpnes ett av fem spillbare 8-bit-minner. Flytt med piltaster/WASD eller skjermknappene, samle tre ledetråder og gå til stolen øverst til høyre. Etter minnet låses neste natt opp. Pause fungerer med Escape eller skjermknappen.
+
+Hvert minne har en egen rominndeling, gjenstandsplassering og del av den fiktive historien. 18 % sjanse per minne gir en skjult Daniel-hendelse når du utforsker høyre del av rommet. Den er ikke nødvendig for å fullføre. Ingen hemmelighet sletter fremgang.
+
+Daniel kan fra natt 2 dukke opp etter at kameraet senkes (7 % sjanse, minst 35 sekunder inn og 50 sekunders nedkjøling). Han følger ikke dørene: åpne kameraet igjen innen fem sekunder for å se bort. Alvar-hendelsen har prioritet. `daniel3.png` er skikkelsen, `daniel2.png` nærbildet, og `daniel1.jpg` det sjeldne røde minneglimtet.

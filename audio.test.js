@@ -2,6 +2,12 @@ const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const {Sound,AUDIO_FILES}=require('./audio');
 const fs=require('node:fs');
+test('One undecodable sound cannot reject loading or prevent other sounds from loading',async()=>{
+ const oldWindow=global.window,oldFetch=global.fetch,oldWarn=console.warn;
+ let calls=0;global.window={AudioContext:class {constructor(){this.state='running';}createGain(){return {gain:{},connect(){}};} async decodeAudioData(){if(++calls===1)throw Error('unknown content type');return {};}}};
+ global.fetch=async()=>({ok:true,arrayBuffer:async()=>new ArrayBuffer(8)});console.warn=()=>{};
+ try{const s=new Sound();await s.load(()=>{});assert.equal(s.failures.length,1);assert.equal(Object.keys(s.buffers).length,10);}finally{global.window=oldWindow;global.fetch=oldFetch;console.warn=oldWarn;}
+});
 test('All sound assets exist',()=>{for(const path of Object.values(AUDIO_FILES))assert.ok(fs.statSync(__dirname+'/'+path).size>100);});
 function mockSound(){
  const s=new Sound(); s.buffers=Object.fromEntries(Object.keys(AUDIO_FILES).map(k=>[k,{}]));
