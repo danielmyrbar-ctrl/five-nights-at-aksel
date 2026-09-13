@@ -250,7 +250,17 @@ rooms.forEach((room, i) => {
   b.onclick = () => { if (game && !paused) { game.selectCamera(room.id); signalLeft = .14; ui(); } };
   $('mapbuttons').appendChild(b);
 });
+const secretKeys = new Set();
+window.addEventListener('keyup', e => secretKeys.delete(e.code));
+window.addEventListener('blur', () => secretKeys.clear());
 window.addEventListener('keydown', e => {
+  secretKeys.add(e.code);
+  if (mode === 'play' && !paused && game?.status === 'playing' &&
+      ['KeyB', 'KeyY', 'Digit2'].every(key => secretKeys.has(key))) {
+    e.preventDefault(); secretKeys.clear();
+    game.time = 240; game.status = 'won'; game.winding = false; game.events.length = 0;
+    finish(); return;
+  }
   if(mode==='ending'){if(e.key==='Escape'&&!e.repeat)togglePause();return;}
   if(mode==='memory'){ const k=e.key.toLowerCase(); if(memoryKeys[k]){e.preventDefault();if(!paused){memoryDirection=memoryKeys[k];memory.move(...memoryDirection);}} if(k==='escape'&&!e.repeat)togglePause();return; }
   if (e.target.id === 'wind' && [' ', 'Enter'].includes(e.key)) { e.preventDefault(); if (!paused) game?.setWinding(true); return; }
@@ -263,6 +273,7 @@ window.addEventListener('keydown', e => {
   else if (/^[1-7]$/.test(k) && game?.monitor && !paused) { game.selectCamera(rooms[Number(k) - 1].id); signalLeft = .14; ui(); }
 });
 document.addEventListener('visibilitychange', () => {
+  if(document.hidden)secretKeys.clear();
   if(document.hidden && mode==='ending' && !ending.paused)ending.pause(true);
   if(document.hidden && mode==='memory' && !paused)togglePause();
   if (document.hidden && mode === 'play' && !paused && game.status === 'playing') togglePause();
