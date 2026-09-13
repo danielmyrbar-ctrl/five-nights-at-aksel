@@ -12,6 +12,7 @@ const ASSETS = {
     "aksel": "office aksel.png"
   },
   "jumpscare": "jumpscare.png",
+  "alvarEntity": "alvar.png",
   "map": "kart.png",
   "vaskerom": {
     "empty": "vaskerom.png",

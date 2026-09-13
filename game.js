@@ -15,50 +15,6 @@ let menuClock = 0, glitchIn = 4, glitchLeft = 0, glitchImage = 1, signalLeft = 0
 const images = new Map();
 try { unlocked = Math.max(1, Math.min(5, Number(localStorage.getItem('aksel-night')) || 1)); } catch {}
 
-class Sound {
-  async start() {
-    if (!this.ctx) {
-      this.ctx = new (window.AudioContext || window.webkitAudioContext)();
-      this.master = this.ctx.createGain();
-      this.master.gain.value = muted ? 0 : .3;
-      this.master.connect(this.ctx.destination);
-      const hum = this.ctx.createOscillator(), gain = this.ctx.createGain();
-      hum.frequency.value = 48; gain.gain.value = .04;
-      hum.connect(gain).connect(this.master); hum.start();
-    }
-    await this.ctx.resume();
-  }
-  tone(freq, duration = .15, type = 'sine', volume = .15, pan = 0) {
-    if (!this.ctx) return;
-    const c = this.ctx, o = c.createOscillator(), g = c.createGain(), p = c.createStereoPanner();
-    o.type = type; o.frequency.setValueAtTime(freq, c.currentTime);
-    o.frequency.exponentialRampToValueAtTime(Math.max(20, freq * .5), c.currentTime + duration);
-    g.gain.setValueAtTime(volume, c.currentTime); g.gain.exponentialRampToValueAtTime(.001, c.currentTime + duration);
-    p.pan.value = pan; o.connect(g).connect(p).connect(this.master);
-    o.start(); o.stop(c.currentTime + duration);
-    o.onended = () => { o.disconnect(); g.disconnect(); p.disconnect(); };
-  }
-  noise(duration = .2, volume = .12) {
-    if (!this.ctx) return;
-    const c = this.ctx, b = c.createBuffer(1, Math.ceil(c.sampleRate * duration), c.sampleRate);
-    const d = b.getChannelData(0);
-    for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / d.length);
-    const s = c.createBufferSource(), g = c.createGain();
-    s.buffer = b; g.gain.value = volume; s.connect(g).connect(this.master); s.start();
-    s.onended = () => { s.disconnect(); g.disconnect(); };
-  }
-  play(event) {
-    if (event === 'door') { this.noise(.35, .25); this.tone(85, .3, 'triangle', .4); }
-    if (event === 'light') this.tone(180, .12, 'sawtooth', .06);
-    if (event === 'monitor' || event === 'camera') this.noise(.16, .1);
-    if (event === 'step') this.tone(60, .25, 'triangle', .35, ['vaskerom', 'kjokken', 'stua'].includes(game.room) ? -.7 : .5);
-    if (event === 'arrival') this.tone(48, .6, 'triangle', .35);
-    if (event === 'knock') { this.noise(.15, .3); this.tone(42, .4, 'triangle', .5); }
-    if (event === 'blackout') this.tone(180, 1.8, 'sawtooth', .2);
-    if (event === 'scare') { this.noise(1.6, .65); this.tone(170, 1.4, 'sawtooth', .45); }
-    if (event === 'win') [440, 554, 659].forEach(f => this.tone(f, 1.3, 'sine', .09));
-  }
-}
 const sound = new Sound();
 
 async function preload() {
@@ -76,7 +32,7 @@ async function preload() {
       $('loadstatus').textContent = `LASTER BILDER · ${loaded} / ${files.length}`;
     }
   }
-  await Promise.all(Array.from({ length: 4 }, worker));
+  await Promise.all([Promise.all(Array.from({ length: 4 }, worker)), sound.load(() => {}).catch(error => failures.push('Lyd: ' + error.message))]);
   ready = failures.length === 0;
   $('start').disabled = $('continue').disabled = !ready;
   $('loadstatus').textContent = ready ? 'ALLE KAMERAER TILKOBLET' : 'Kunne ikke laste: ' + failures.join(', ') + '. Last siden på nytt.';
@@ -91,6 +47,17 @@ function drawPhoto(path, { shade = 0, shake = 0, zoom = 1 } = {}) {
   const y = (h - dh) / 2 + (Math.random() - .5) * shake;
   ctx.drawImage(img, x, y, dw, dh);
   if (shade) { ctx.fillStyle = `rgba(0,0,0,${shade})`; ctx.fillRect(0, 0, w, h); }
+}
+function drawAlvar(scare) {
+  const img = images.get(ASSETS.alvarEntity); if (!img) return;
+  const crop = scare ? [240, 0, 520, 900] : [350, 0, 310, 360];
+  const height = canvas.height * (scare ? 1.25 : .88);
+  const width = height * crop[2] / crop[3];
+  const shake = scare ? 30 : 3;
+  ctx.save(); ctx.globalAlpha = scare ? 1 : .43;
+  ctx.drawImage(img, ...crop, (canvas.width-width)/2+(Math.random()-.5)*shake,
+    (canvas.height-height)/2+(Math.random()-.5)*shake, width, height);
+  ctx.restore();
 }
 function staticNoise(amount = 1) {
   const w = canvas.width, h = canvas.height;
@@ -114,7 +81,7 @@ function render(dt) {
       glitchLeft = .12 + Math.random() * .14;
       glitchImage = Math.random() < .5 ? 2 : 3;
       glitchIn = 3.5 + Math.random() * 5.5;
-      if (!muted) sound.noise(.08, .025);
+
     }
     glitchLeft = Math.max(0, glitchLeft - dt);
     const variant = glitchLeft > 0 ? glitchImage : 1;
@@ -125,13 +92,15 @@ function render(dt) {
     if (glitchLeft > 0) staticNoise(4);
     $('scene').dataset.view = 'start' + variant;
   } else if (scareLeft > 0) {
-    drawPhoto(ASSETS.jumpscare, { shake: 35, zoom: 1.12 });
+    if (game.killer === 'alvar') drawAlvar(true);
+    else drawPhoto(ASSETS.jumpscare, { shake: 35, zoom: 1.12 });
     staticNoise(2);
     $('scene').dataset.view = 'jumpscare';
   } else if (game) {
     if (game.monitor) {
       const state = game.cameraState(game.camera);
       drawPhoto(ASSETS[game.camera][state], { shade: .08 });
+      if (game.alvarAngry) drawAlvar(false);
       staticNoise(signalLeft > 0 ? 4 : .7);
       $('scene').dataset.view = game.camera + ':' + state;
     } else {
@@ -160,7 +129,7 @@ function ui() {
   document.querySelectorAll('[data-kind]').forEach(b => {
     b.classList.toggle('active', game[b.dataset.kind]);
     b.setAttribute('aria-pressed', game[b.dataset.kind]);
-    b.disabled = game.power <= 0 || game.status !== 'playing';
+    b.disabled = (game.power <= 0 && !game.alvarAngry) || game.status !== 'playing';
   });
   document.querySelectorAll('[data-cam]').forEach(b => {
     b.classList.toggle('selected', b.dataset.cam === game.camera);
@@ -168,11 +137,18 @@ function ui() {
   });
   $('doorstate').textContent = game.door ? 'DØR LUKKET' : 'DØR ÅPEN';
   $('status').textContent = game.power <= 0 ? 'STRØMBRUDD' : paused ? 'VAKT PAUSET' : 'VAKT AKTIV';
-  $('monitor').disabled = game.power <= 0 || game.status !== 'playing';
+  $('monitor').disabled = (game.power <= 0 && !game.alvarAngry) || game.status !== 'playing';
+  $('musicbox').hidden = !game.monitor || game.camera !== 'alvar';
+  $('boxpie').style.setProperty('--charge', game.musicBox * 3.6 + 'deg');
+  $('boxpie').setAttribute('aria-valuenow', Math.round(game.musicBox));
+  $('boxvalue').textContent = Math.ceil(game.musicBox) + '%';
+  $('wind').classList.toggle('active', game.winding);
+  $('denied').hidden = game.deniedFor <= 0;
 }
 async function start(level) {
   if (!ready) return;
   try { await sound.start(); } catch { $('mute').textContent = 'LYD UTILGJENGELIG'; }
+  sound.resetNight();
   game = new Night(level); mode = 'play'; paused = false; scareLeft = 0;
   $('overlay').hidden = $('modal').hidden = true;
   $('hud').hidden = $('controls').hidden = false;
@@ -189,16 +165,18 @@ function finish() {
     unlocked = Math.max(unlocked, Math.min(5, game.level + 1));
     try { localStorage.setItem('aksel-night', unlocked); } catch {}
     modal('NATT ' + game.level + ' FULLFØRT', '06:00', game.level === 5 ? 'Du overlevde alle fem nettene hos Aksel.' : 'Du overlevde. Neste natt beveger Aksel seg raskere.', game.level === 5 ? 'SPILL IGJEN' : 'SPILL NATT ' + (game.level + 1));
-  } else modal('SIGNAL TAPT', 'HAN FANT DEG', game.power <= 0 ? 'Strømmen gikk. Vanlig kontorvisning bruker ikke strøm. Slå av utstyret når du ikke trenger det.' : 'Når Aksel står utenfor kontoret, har du bare noen sekunder på å lukke døren. Vent på bankingen før du åpner igjen.', 'PRØV IGJEN');
+  } else { sound.stopShots(); sound.play('jingle'); modal('SIGNAL TAPT', 'HAN FANT DEG', game.killer === 'alvar' ? 'Musikkboksen gikk tom. Hold inne MUSIC BOX på Alvar-kameraet før den tømmes.' : game.power <= 0 ? 'Strømmen gikk. Vanlig kontorvisning bruker ikke strøm. Slå av utstyret når du ikke trenger det.' : 'Når Aksel står utenfor kontoret, har du bare noen sekunder på å lukke døren. Bankingen varsler at han har kommet. Bruk lyset for å sjekke når han har gått.', 'PRØV IGJEN'); }
 }
 function togglePause() {
   if (mode !== 'play' || game.status !== 'playing') return;
+  game.setWinding(false);
   paused = !paused;
   if (paused) { modal('VAKT PAUSET', 'PUST UT', 'Klokken og Aksel står stille til du fortsetter.', 'FORTSETT VAKTEN'); sound.ctx?.suspend(); }
   else { $('modal').hidden = true; sound.ctx?.resume(); }
   ui();
 }
 function menu() {
+  sound.resetNight(); $('denied').hidden = true;
   game = null; mode = 'menu'; paused = false; scareLeft = 0;
   $('modal').hidden = $('hud').hidden = $('controls').hidden = $('cameraUI').hidden = true;
   $('overlay').hidden = false; document.body.className = '';
@@ -217,7 +195,7 @@ $('resume').onclick = () => game.status === 'playing' ? togglePause() : start(ga
 $('restart').onclick = menu;
 $('monitor').onclick = () => control('monitor'); $('pause').onclick = togglePause;
 document.querySelectorAll('[data-kind]').forEach(b => b.onclick = () => control(b.dataset.kind));
-$('mute').onclick = () => { muted = !muted; if (sound.master) sound.master.gain.value = muted ? 0 : .3; $('mute').textContent = muted ? 'LYD AV' : 'LYD PÅ'; };
+$('mute').onclick = () => { muted = !muted; sound.start(); sound.setMuted(muted); $('mute').textContent = muted ? 'LYD AV' : 'LYD PÅ'; };
 rooms.forEach((room, i) => {
   const b = document.createElement('button'); b.textContent = '0' + (i + 1); b.dataset.cam = room.id;
   b.title = room.name; b.setAttribute('aria-label', 'Kamera ' + (i + 1) + ': ' + room.name);
@@ -226,6 +204,7 @@ rooms.forEach((room, i) => {
   $('mapbuttons').appendChild(b);
 });
 window.addEventListener('keydown', e => {
+  if (e.target.id === 'wind' && [' ', 'Enter'].includes(e.key)) { e.preventDefault(); if (!paused) game?.setWinding(true); return; }
   if (e.repeat || e.target.tagName === 'INPUT') return;
   const k = e.key.toLowerCase();
   if (k === ' ') { e.preventDefault(); control('monitor'); }
@@ -250,6 +229,12 @@ function frame(ms) {
     else if (game.status === 'lost') { scareLeft = Math.max(0, scareLeft - dt); if (!scareLeft) finish(); }
     if (frameNo++ % 3 === 0) ui();
   }
+  sound.sync(mode, game);
   render(dt); requestAnimationFrame(frame);
 }
+$('enableSound').onclick = async () => { await sound.start(); $('enableSound').hidden = true; };
+$('wind').addEventListener('pointerdown', e => { e.preventDefault(); if (!paused) game?.setWinding(true); $('wind').setPointerCapture(e.pointerId); });
+for (const event of ['pointerup', 'pointercancel', 'lostpointercapture']) $('wind').addEventListener(event, () => game?.setWinding(false));
+window.addEventListener('keyup', e => { if ([' ', 'Enter'].includes(e.key)) game?.setWinding(false); });
+window.addEventListener('blur', () => game?.setWinding(false));
 preload(); requestAnimationFrame(frame);
