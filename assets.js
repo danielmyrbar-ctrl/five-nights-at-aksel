@@ -1,5 +1,6 @@
 // Exact original filenames; do not infer filenames at runtime.
 const ASSETS = {
+  "akselPortrait": "aksel.png",
   "menu": {
     "1": "start screen1.png",
     "2": "start screen2.png",

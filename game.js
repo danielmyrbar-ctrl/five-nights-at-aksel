@@ -11,6 +11,8 @@ const rooms = [
   { id: 'danielroom', name: 'Daniel rom', x: 90.2, y: 54.5 }
 ];
 let game = null, paused = false, mode = 'menu', last = 0, scareLeft = 0;
+let galleryUnlocked = false;
+try { galleryUnlocked = localStorage.getItem('aksel-gallery') === '1'; } catch {}
 let unlocked = 1, muted = false, ready = false, frameNo = 0;
 let menuClock = 0, glitchIn = 4, glitchLeft = 0, glitchImage = 1, signalLeft = 0;
 const images = new Map();
@@ -28,6 +30,43 @@ function beginEnding() {
   ending.begin();
 }
 
+let epilogue=null, epDirection=[0,0], epBeat=0;
+const rainView=new RainView($('epilogueCanvas'));
+const epKeys=new Set();
+function beginEpilogue(){
+  mode='epilogue';paused=false;sound.resetNight();epilogue=new RainEpilogue();epBeat=0;epKeys.clear();epDirection=[0,0];
+  $('epPause').textContent='PAUSE';
+  if(sound.ctx&&!sound.buffers.rain){const b=sound.ctx.createBuffer(1,sound.ctx.sampleRate*2,sound.ctx.sampleRate),d=b.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*.08;sound.buffers.rain=b;}
+  for(const id of ['hud','controls','cameraUI','modal','memoryPanel','denied'])$(id).hidden=true;
+  $('epiloguePanel').hidden=false;document.body.classList.remove('camera');$('epilogueCanvas').focus();
+}
+function epAction(){if(epilogue&&!paused)epilogue.action();}
+$('epAction').onclick=epAction;$('epPause').onclick=togglePause;
+for(const b of document.querySelectorAll('[data-epmove]')){
+  b.onpointerdown=e=>{e.preventDefault();epDirection=b.dataset.epmove.split(',').map(Number);b.setPointerCapture(e.pointerId);};
+  for(const name of ['pointerup','pointercancel','lostpointercapture'])b.addEventListener(name,()=>epDirection=[0,0]);
+}
+window.addEventListener('keyup',e=>epKeys.delete(e.key.toLowerCase()));
+window.addEventListener('blur',()=>{epKeys.clear();epDirection=[0,0];});
+const galleryEntries=[
+ ['Aksel','aksel.png'],['Aksel / kontoret','office aksel.png'],['Aksel / jumpscare','jumpscare.png'],
+ ['Alvar','alvar.png'],['Daniel / rødt minne','daniel1.jpg'],['Daniel / nærbilde','daniel2.png'],['Daniel / skikkelse','daniel3.png'],
+ ['Nattevakten / 8-bit','guard'],['Rød sedan / 8-bit','car'],['Arkiv 02 / 8-bit','building']
+];
+let galleryIndex=0;
+function drawGallery(){
+ const [name,path]=galleryEntries[galleryIndex],c=$('galleryCanvas').getContext('2d');c.imageSmoothingEnabled=false;c.fillStyle='#0b1018';c.fillRect(0,0,640,400);
+ if(path==='guard'){c.save();c.translate(320,220);c.scale(8,8);pixelGuard(c,0,0);c.restore();}
+ else if(path==='car'){c.save();c.translate(320,220);c.scale(4,4);pixelSedan(c,0,0);c.restore();}
+ else if(path==='building'){c.save();c.translate(100,65);c.scale(2,2);pixelBuilding(c,0,0);c.restore();}
+ else {const img=images.get(path);if(img){c.imageSmoothingEnabled=true;const scale=Math.min(600/img.width,370/img.height);c.drawImage(img,(640-img.width*scale)/2,(400-img.height*scale)/2,img.width*scale,img.height*scale);}}
+ $('galleryTitle').textContent=name;$('galleryCount').textContent=(galleryIndex+1)+' / '+galleryEntries.length;
+}
+$('galleryOpen').hidden=!galleryUnlocked;
+$('galleryOpen').onclick=()=>{if(!galleryUnlocked)return;mode='gallery';$('galleryPanel').hidden=false;drawGallery();};
+$('galleryClose').onclick=()=>{mode='menu';$('galleryPanel').hidden=true;};
+$('galleryPrev').onclick=()=>{galleryIndex=(galleryIndex+galleryEntries.length-1)%galleryEntries.length;drawGallery();};
+$('galleryNext').onclick=()=>{galleryIndex=(galleryIndex+1)%galleryEntries.length;drawGallery();};
 let memory = null, memoryCleared = false, memoryBeat = 0, memoryDirection = null;
 const memoryView = new MemoryView($('memoryCanvas'), images);
 function beginMemory() {
@@ -73,6 +112,7 @@ async function preload() {
   await Promise.all(Array.from({ length: 4 }, worker));
   ready = failures.length === 0;
   $('start').disabled = $('continue').disabled = !ready;
+  $('galleryOpen').disabled = !ready;
   $('loadstatus').textContent = ready ? 'ALLE KAMERAER TILKOBLET' : 'Kunne ikke laste: ' + failures.join(', ') + '. Last siden på nytt.';
   $('loadstatus').classList.toggle('error', !ready);
 }
@@ -113,7 +153,7 @@ function render(dt) {
   const w = Math.round(canvas.clientWidth * ratio), h = Math.round(canvas.clientHeight * ratio);
   if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
   ctx.fillStyle = '#030505'; ctx.fillRect(0, 0, w, h);
-  if (mode === 'menu') {
+  if (mode === 'menu' || mode === 'gallery') {
     menuClock += dt; glitchIn -= dt;
     if (glitchIn <= 0 && ready) {
       glitchLeft = .12 + Math.random() * .14;
@@ -194,7 +234,7 @@ async function start(level) {
   game = new Night(level); mode = 'play'; paused = false; scareLeft = 0;
   $('overlay').hidden = $('modal').hidden = true;
   $('hud').hidden = $('controls').hidden = false;
-  document.body.classList.remove('scaring'); ui();
+  document.body.classList.remove('scaring','menu-return'); ui();
 }
 function modal(label, title, description, button) {
   $('resultlabel').textContent = label; $('resulttitle').textContent = title;
@@ -204,6 +244,7 @@ function modal(label, title, description, button) {
 function finish() {
   paused = true; document.body.classList.remove('scaring');
   if (game.status === 'won') {
+    if(game.level===6){beginEpilogue();return;}
     if (!memoryCleared) { beginMemory(); return; }
     if(game.level===5){beginEnding();return;}
     unlocked = Math.max(unlocked, Math.min(6, game.level + 1));
@@ -212,6 +253,7 @@ function finish() {
   } else { sound.stopShots(); sound.play('jingle'); modal('SIGNAL TAPT', 'HAN FANT DEG', game.killer === 'daniel' ? 'Daniel følger ikke dørene. Åpne kameraene for å se bort før han kommer nærmere.' : game.killer === 'alvar' ? 'Musikkboksen gikk tom. Hold inne MUSIC BOX på Alvar-kameraet før den tømmes.' : game.power <= 0 ? 'Strømmen gikk. Vanlig kontorvisning bruker ikke strøm. Slå av utstyret når du ikke trenger det.' : 'Når Aksel står utenfor kontoret, har du bare noen sekunder på å lukke døren. Bankingen varsler at han har kommet. Bruk lyset for å sjekke når han har gått.', 'PRØV IGJEN'); }
 }
 function togglePause() {
+  if(mode==='epilogue'){paused=!paused;epKeys.clear();epDirection=[0,0];if(paused)sound.ctx?.suspend();else sound.ctx?.resume();$('epPause').textContent=paused?'FORTSETT':'PAUSE';return;}
   if(mode==='ending'){ending.pause(!ending.paused);return;}
   if(mode==='memory'){ paused=!paused;memoryDirection=null;if(paused)sound.ctx?.suspend();else sound.ctx?.resume();return; }
   if (mode !== 'play' || game.status !== 'playing') return;
@@ -222,6 +264,7 @@ function togglePause() {
   ui();
 }
 function menu() {
+  epilogue=null;$('epiloguePanel').hidden=true;$('galleryPanel').hidden=true;$('galleryOpen').hidden=!galleryUnlocked;
   ending.dispose();
   sound.resetNight(); memory=null; $('memoryPanel').hidden=true; $('denied').hidden = true;
   game = null; mode = 'menu'; paused = false; scareLeft = 0;
@@ -254,6 +297,12 @@ const secretKeys = new Set();
 window.addEventListener('keyup', e => secretKeys.delete(e.code));
 window.addEventListener('blur', () => secretKeys.clear());
 window.addEventListener('keydown', e => {
+  if(mode==='gallery'){if(e.key==='Escape')$('galleryClose').click();else if(e.key==='ArrowRight')$('galleryNext').click();else if(e.key==='ArrowLeft')$('galleryPrev').click();return;}
+  if(mode==='epilogue'){
+    const k=e.key.toLowerCase();if(['arrowup','arrowdown','arrowleft','arrowright','w','a','s','d'].includes(k)){e.preventDefault();epKeys.add(k);}
+    if(!e.repeat && ['e','Enter',' '].includes(e.key)){e.preventDefault();epAction();}
+    if(e.key==='Escape'&&!e.repeat)togglePause();return;
+  }
   secretKeys.add(e.code);
   if (mode === 'play' && !paused && game?.status === 'playing' &&
       ['KeyB', 'KeyY', 'Digit2'].every(key => secretKeys.has(key))) {
@@ -274,6 +323,7 @@ window.addEventListener('keydown', e => {
 });
 document.addEventListener('visibilitychange', () => {
   if(document.hidden)secretKeys.clear();
+  if(document.hidden&&mode==='epilogue'&&!paused)togglePause();
   if(document.hidden && mode==='ending' && !ending.paused)ending.pause(true);
   if(document.hidden && mode==='memory' && !paused)togglePause();
   if (document.hidden && mode === 'play' && !paused && game.status === 'playing') togglePause();
@@ -298,8 +348,20 @@ function frame(ms) {
     $('memoryCount').textContent=memory.collected.length+'/3 · '+(memory.collected.length===3?'GÅ TIL STOLEN ØVERST TIL HØYRE':memory.story.task);
     $('memoryFinish').hidden=!memory.done;
   }
+  if(mode==='epilogue'&&epilogue){
+    sound.loop('rain',['outside','drive','arrival'].includes(epilogue.phase)?.35:0);
+    if(!paused){
+      const dx=epDirection[0]+Number(epKeys.has('d')||epKeys.has('arrowright'))-Number(epKeys.has('a')||epKeys.has('arrowleft'));
+      const dy=epDirection[1]+Number(epKeys.has('s')||epKeys.has('arrowdown'))-Number(epKeys.has('w')||epKeys.has('arrowup'));
+      epilogue.tick(dt,dx,dy);epBeat-=dt;if(epBeat<=0&&epilogue.phase!=='ending'){sound.chip(Math.floor(epilogue.time/2)%4);epBeat=1.3;}
+    }
+    rainView.draw(epilogue);$('epHint').textContent=paused?'PAUSE':epilogue.hint;
+    $('epAction').hidden=!epilogue.canAct;$('epAction').textContent=epilogue.phase==='outside'?'SETT DEG I BILEN [E]':'GÅ INN [E]';
+    $('epControls').hidden=['ending','done'].includes(epilogue.phase);
+    if(epilogue.done){galleryUnlocked=true;try{localStorage.setItem('aksel-gallery','1');localStorage.setItem('aksel-night',6);}catch{}menu();document.body.classList.add('menu-return');}
+  }
   if(mode==='ending')ending.tick(dt);
-  sound.sync(mode, game);
+  sound.sync(mode==='gallery'?'menu':mode, game);
   render(dt); requestAnimationFrame(frame);
 }
 // Attempt autoplay, and unlock automatically on the first ordinary interaction.
