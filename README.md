@@ -83,3 +83,9 @@ Menylyden prøves på nytt når lyddata er klare, ved tilbakekomst til vinduet o
 Daniel kan vise det røde ansiktet i kamera 07 i fem sekunder. Hver opptreden gir bare én jingle, først når kameraet faktisk viser ansiktet. Alvars raseri overstyrer opptredenen.
 
 Minne 1 krever levering av ett navneskilt om gangen. I minne 2 er du Aksel i verkstedet og leter etter ABS-filament. Funnet utløser en syv sekunders Daniel-sekvens med «you can't» før spillet går videre automatisk. Minne 3 krever opptakene i riktig rekkefølge. Minne 4 har en forfølgende skygge som sender deg til starten, men beholder sporene dine. Minne 5 har et snevert lysfelt. Alle beholder pikselgrafikk, chiptune og den urolige minne-stemningen.
+
+## Sikringsskapet etter natt 3 (versjon 8)
+
+Etter 8-bit-minnet må alle fire systemer restartes før natt 4 låses opp. Ruter tar 6 sekunder, 3D Printer 11, Varmepumpe 8 og Kamerasystem 14. Ett system om gangen; arbeidet fortsetter når du ser tilbake på Daniel. Pilknappen eller piltastene snur hodet. Escape pauser. Daniel går bare fremover gjennom stage 0–4, med 7–11 sekunder per steg mens du ser bort. Tom stol gir 14–20 sekunder før jumpscare, uansett synsretning. Tap lar deg prøve denne sekvensen igjen.
+
+Test sekvensen med `node --test breaker.test.js`.
