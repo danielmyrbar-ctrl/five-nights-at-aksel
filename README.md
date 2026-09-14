@@ -93,3 +93,11 @@ Test sekvensen med `node --test breaker.test.js`.
 ## Lyd og bilde i Daniel-sekvensen (versjon 9)
 
 Snuing bruker en rask 160 ms fading og `snu.wav`; tilbakepilen står til venstre ved sikringsskapet. Daniel-bevegelse bruker `bevegelse.wav`, med `bevegelse2.wav` ved tom stol. Kontorambiente og `ambiance2.wav` går samtidig. Lyse 8-bit-toner følger restartfremgangen, og et animert støylag gir videokorn. Pauseknappen og Escape-pause er fjernet fra denne sekvensen; skjult nettleserfane stopper midlertidig og fortsetter automatisk ved retur. Originale WAV-filer beholdes, og nettleseren bruker kompatible MP3-kopier.
+
+## Stjerner, Custom Night og siste minne (versjon 10)
+
+Overlev natt 5 for én menystjerne, natt 6 for to og natt 7 for tre. Stjerner lagres lokalt. Tidligere spillere med opplåst natt 6 får første stjerne; fullført epilog og spritegalleri gir to. Etter natt 6 åpnes Custom Night i menyen. Still Aksel, Alvar og Daniel uavhengig fra 0 til 20. Null deaktiverer figurens angrep. Alle kombinasjoner gir tredje stjerne ved seier.
+
+20/20/20 gir raske Aksel-ruter, kortere reaksjonstid, hyppigere Daniel og en musikkboks som tømmes på omtrent 18 sekunder. En test spiller 40 ulike tilfeldige forløp med reaksjoner hvert halve sekund og bekrefter at strømmen rekker med aktiv styring.
+
+Etter natt 7 spiller du Alvar: hent snus til Daniel og Urge til Aksel, som ligger urørlige på gulvet. Lever begge og gå til presangen i midten. Avslutningen fader til «Du vant» og «denne gang...» før menyen kommer tilbake. Beveg deg med WASD/piltaster eller skjermknappene. Test med `node --test custom.test.js`.

@@ -6,8 +6,9 @@ class Night {
     stua: ['kjokken', 'gang'], gang: ['kjokken', 'stua', 'stage', 'alvar', 'office'],
     stage: ['gang'], alvar: ['gang'], office: ['gang']
   };
-  constructor(level = 1, random = Math.random) {
-    this.level = Math.max(1, Math.min(6, level)); this.random = random;
+  constructor(level = 1, random = Math.random, difficulty = {}) {
+    this.level = Math.max(1, Math.min(7, level)); this.random = random;
+    this.custom=this.level===7?Object.fromEntries(['aksel','alvar','daniel'].map(k=>[k,Math.max(0,Math.min(20,Math.round(Number(difficulty[k])||0)))])):null;
     this.time = 0; this.power = 100; this.door = false; this.light = false;
     this.monitor = false; this.camera = 'stage'; this.room = 'stage';
     this.washStage = 1; this.moveIn = 10; this.attack = 0; this.blockedFor = 0;
@@ -15,6 +16,7 @@ class Night {
     this.musicBox = 100; this.winding = false; this.alvarAngry = false;
     this.alvarIn = null; this.killer = null; this.deniedFor = 0;
     this.daniel = false; this.danielStare = 0; this.danielCooldown = 35;
+    if(this.custom){this.moveIn=4;this.danielCooldown=30-this.custom.daniel;}
     this.redIn=18+random()*22;this.redFor=0;this.redSeen=false;
     this.route = random() < .5
       ? ['gang', 'kjokken', 'vaskerom', 'kjokken', 'stua', 'gang', 'office']
@@ -22,7 +24,7 @@ class Night {
   }
   get usage() { return Number(this.door) * 3 + Number(this.light) + Number(this.monitor); }
   get drain() { return this.alvarAngry ? 0 : Number(this.door) * .75 + Number(this.light) * .27 + Number(this.monitor) * .18; }
-  get boxDrain() { return 1.15 + this.level * .12; }
+  get boxDrain() { return this.custom?(this.custom.alvar===0?0:1.15+this.custom.alvar*.22):1.15 + this.level * .12; }
   get canWind() { return this.status === 'playing' && !this.alvarAngry && this.power > 0 && this.monitor && this.camera === 'alvar'; }
   get officeState() {
     if (this.door) return 'closed';
@@ -38,8 +40,8 @@ class Night {
     this[kind] = !this[kind];
     if (kind === 'monitor') {
       if (this.monitor) { this.daniel = false; this.danielStare = 0; }
-      else if (this.level >= 2 && !this.alvarAngry && this.danielCooldown <= 0 && this.room !== 'office' && this.random() < .07) {
-        this.daniel = true; this.danielStare = 0; this.danielCooldown = 50; this.events.push('daniel');
+      else if ((this.custom?this.custom.daniel>0:this.level>=2) && !this.alvarAngry && this.danielCooldown <= 0 && this.room !== 'office' && this.random() < (this.custom?this.custom.daniel*.04:.07)) {
+        this.daniel = true; this.danielStare = 0; this.danielCooldown = this.custom?30-this.custom.daniel:50; this.events.push('daniel');
       }
     }
     if (!this.monitor) this.winding = false;
@@ -58,7 +60,7 @@ class Night {
     if (!Night.connections[this.room].includes(room)) throw new Error('Disconnected rooms: ' + this.room + ' -> ' + room);
     this.room = room;
     if (room === 'vaskerom') this.washStage = 1;
-    this.moveIn = 8.5 - this.level * .8 + this.random() * 4;
+    this.moveIn = this.custom?6.5-this.custom.aksel*.245+this.random()*1.5:8.5 - this.level * .8 + this.random() * 4;
     this.events.push(room === 'office' ? 'arrival' : 'step');
   }
   retreat() {
@@ -69,12 +71,13 @@ class Night {
       ['stua', 'kjokken', 'gang', 'alvar', 'gang', 'office']
     ];
     this.route = routes[Math.min(2, Math.floor(this.random() * 3))].slice();
-    this.moveIn = 3 + this.random() * 3;
+    if(this.custom&&this.custom.aksel>=15)this.route=['stage','gang','office'];
+    this.moveIn = this.custom?2+this.random()*2:3 + this.random() * 3;
     this.events.push('retreat');
   }
   move() {
     if (this.room === 'vaskerom' && this.washStage === 1) {
-      this.washStage = 2; this.moveIn = 6 + this.random() * 3; this.events.push('step');
+      this.washStage = 2; this.moveIn = this.custom?2+this.random()*2:6 + this.random() * 3; this.events.push('step');
     } else if (this.route.length) this.travel(this.route.shift());
   }
   lose(killer) { this.killer = killer; this.status = 'lost'; this.winding = false; this.events.push('scare'); }
@@ -84,7 +87,7 @@ class Night {
     this.winding = false; this.light = false; this.door = false; this.events.push('alvar');
   }
   tickRedFace(dt) {
-    if(this.alvarAngry){this.redFor=0;return;}
+    if(this.alvarAngry||(this.custom&&this.custom.daniel===0)){this.redFor=0;return;}
     if(this.redFor>0)this.redFor=Math.max(0,this.redFor-dt);
     else {
       this.redIn-=dt;
@@ -105,7 +108,7 @@ class Night {
     if (this.time >= 240) { this.status = 'won'; this.winding = false; this.events.push('win'); return; }
     this.musicBox = Math.max(0, Math.min(100, this.musicBox + dt * ((this.winding && this.canWind ? 19 : 0) - this.boxDrain)));
     if (this.musicBox <= 0) { this.releaseAlvar(); return; }
-    if (this.daniel && !this.monitor) { this.danielStare += dt; if (this.danielStare >= 5) { this.lose('daniel'); return; } }
+    if (this.daniel && !this.monitor) { this.danielStare += dt; if (this.danielStare >= (this.custom?5-this.custom.daniel*.13:5)) { this.lose('daniel'); return; } }
     this.power = Math.max(0, this.power - dt * this.drain);
     if (this.power <= 0) {
       if (!this.blackout) { this.door = this.light = this.monitor = this.winding = false; this.events.push('blackout'); }
@@ -115,9 +118,10 @@ class Night {
     }
     if (this.room === 'office') {
       if (this.door) { this.blockedFor += dt; if (this.blockedFor >= 1.8) this.retreat(); }
-      else { this.blockedFor = 0; this.attack += dt; if (this.attack >= 5.5 - this.level * .45) this.lose('aksel'); }
+      else { this.blockedFor = 0; this.attack += dt; if (this.attack >= (this.custom?5.2-this.custom.aksel*.15:5.5 - this.level * .45)) this.lose('aksel'); }
       return;
     }
+    if(this.custom&&this.custom.aksel===0)return;
     this.moveIn -= dt;
     if (this.moveIn <= 0) this.move();
   }

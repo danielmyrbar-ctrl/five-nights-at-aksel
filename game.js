@@ -18,6 +18,17 @@ let menuClock = 0, glitchIn = 4, glitchLeft = 0, glitchImage = 1, signalLeft = 0
 const images = new Map();
 try { unlocked = Math.max(1, Math.min(6, Number(localStorage.getItem('aksel-night')) || 1)); } catch {}
 
+let stars=0;
+try{stars=Math.max(0,Math.min(3,Number(localStorage.getItem('aksel-stars'))||0));}catch{}
+stars=Math.max(stars,galleryUnlocked?2:unlocked>=6?1:0);
+let customSettings={aksel:10,alvar:10,daniel:10};
+function showAwards(){ $('menuStars').textContent='★'.repeat(stars);$('menuStars').setAttribute('aria-label',stars+' stjerner');$('customOpen').hidden=stars<2; }
+function award(level){if(level>=5){stars=Math.max(stars,Math.min(3,level-4));try{localStorage.setItem('aksel-stars',stars);}catch{}showAwards();}}
+$('customOpen').onclick=()=>{if(stars<2)return;mode='custom';$('customPanel').hidden=false;};
+$('customClose').onclick=()=>{mode='menu';$('customPanel').hidden=true;};
+for(const k of ['aksel','alvar','daniel'])$('ai-'+k).oninput=()=>{customSettings[k]=Number($('ai-'+k).value);$('value-'+k).textContent=customSettings[k];};
+$('customMax').onclick=()=>{for(const k of ['aksel','alvar','daniel']){$('ai-'+k).value=20;$('ai-'+k).oninput();}};
+$('customStart').onclick=()=>{if(ready&&stars>=2)start(7);};showAwards();
 const sound = new Sound();
 let breakerCleared=false;
 const breaker=new BreakerView(sound,()=>{breakerCleared=true;mode='play';finish();},()=>menu());
@@ -71,9 +82,10 @@ $('galleryClose').onclick=()=>{mode='menu';$('galleryPanel').hidden=true;};
 $('galleryPrev').onclick=()=>{galleryIndex=(galleryIndex+galleryEntries.length-1)%galleryEntries.length;drawGallery();};
 $('galleryNext').onclick=()=>{galleryIndex=(galleryIndex+1)%galleryEntries.length;drawGallery();};
 let memory = null, memoryCleared = false, memoryBeat = 0, memoryDirection = null;
+const finaleView=new FinaleView($('memoryCanvas'));
 const memoryView = new MemoryView($('memoryCanvas'), images);
 function beginMemory() {
-  memory = new MemoryGame(game.level); mode = 'memory'; paused = false; memoryBeat = 0;
+  memory = game.level===7?new FinaleGame():new MemoryGame(game.level); mode = 'memory'; paused = false; memoryBeat = 0;
   sound.resetNight(); memoryDirection = null;
   $('modal').hidden = $('hud').hidden = $('controls').hidden = $('cameraUI').hidden = true;
   $('memoryPanel').hidden = false; document.body.classList.remove('camera');
@@ -156,7 +168,7 @@ function render(dt) {
   const w = Math.round(canvas.clientWidth * ratio), h = Math.round(canvas.clientHeight * ratio);
   if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
   ctx.fillStyle = '#030505'; ctx.fillRect(0, 0, w, h);
-  if (mode === 'menu' || mode === 'gallery') {
+  if (mode === 'menu' || mode === 'gallery' || mode==='custom') {
     menuClock += dt; glitchIn -= dt;
     if (glitchIn <= 0 && ready) {
       glitchLeft = .12 + Math.random() * .14;
@@ -239,7 +251,8 @@ async function start(level) {
   breaker.dispose();breakerCleared=false;
   ending.dispose(); sound.resetNight();
   memoryCleared = false; memory = null; $('memoryPanel').hidden = true;
-  game = new Night(level); mode = 'play'; paused = false; scareLeft = 0;
+  $('customPanel').hidden=true;
+  game = new Night(level,Math.random,customSettings); mode = 'play'; paused = false; scareLeft = 0;
   $('overlay').hidden = $('modal').hidden = true;
   $('hud').hidden = $('controls').hidden = false;
   document.body.classList.remove('scaring','menu-return'); ui();
@@ -252,6 +265,8 @@ function modal(label, title, description, button) {
 function finish() {
   paused = true; document.body.classList.remove('scaring');
   if (game.status === 'won') {
+    award(game.level);
+    if(game.level===7&&memoryCleared){menu();document.body.classList.add('menu-return');return;}
     if(game.level===6){beginEpilogue();return;}
     if (!memoryCleared) { beginMemory(); return; }
     if(game.level===3&&!breakerCleared){beginBreaker();return;}
@@ -274,6 +289,7 @@ function togglePause() {
   ui();
 }
 function menu() {
+  $('customPanel').hidden=true;showAwards();
   breaker.dispose();
   epilogue=null;$('epiloguePanel').hidden=true;$('galleryPanel').hidden=true;$('galleryOpen').hidden=!galleryUnlocked;
   ending.dispose();
@@ -308,6 +324,7 @@ const secretKeys = new Set();
 window.addEventListener('keyup', e => secretKeys.delete(e.code));
 window.addEventListener('blur', () => secretKeys.clear());
 window.addEventListener('keydown', e => {
+  if(mode==='custom'){if(e.key==='Escape')$('customClose').click();return;}
   if(mode==='breaker'){if(['ArrowLeft','ArrowRight',' '].includes(e.key)&&!e.repeat){e.preventDefault();if(!breaker.paused)breaker.game?.look();}return;}
   if(mode==='gallery'){if(e.key==='Escape')$('galleryClose').click();else if(e.key==='ArrowRight')$('galleryNext').click();else if(e.key==='ArrowLeft')$('galleryPrev').click();return;}
   if(mode==='epilogue'){
@@ -356,11 +373,14 @@ function frame(ms) {
   }
   if(mode==='memory' && memory) {
     if(!paused){memory.tick(dt);if(memoryDirection)memory.move(...memoryDirection);memoryBeat-=dt;if(memoryBeat<=0){sound.chip(Math.floor(memory.age)%4);memoryBeat=.65;}if(memory.note!==undefined){sound.chip(memory.note);delete memory.note;}}
-    memoryView.draw(memory);
+    if(memory.level===7)finaleView.draw(memory);else memoryView.draw(memory);
     $('memoryText').textContent=paused?'PAUSE / ESC FOR Å FORTSETTE':memory.messageFor>0?memory.message:memory.story.task;
     $('memoryCount').textContent=memory.objective;
-    $('memoryFinish').hidden=!memory.done||memory.level===2;
-    if(memory.level===2&&memory.done)$('memoryFinish').click();
+    const finalText=memory.level===7&&memory.ending!==null;
+    document.querySelector('.memory-controls').hidden=finalText;
+    if(finalText)$('memoryText').textContent='';
+    $('memoryFinish').hidden=!memory.done||[2,7].includes(memory.level);
+    if([2,7].includes(memory.level)&&memory.done)$('memoryFinish').click();
   }
   if(mode==='epilogue'&&epilogue){
     sound.loop('rain',['outside','drive','arrival'].includes(epilogue.phase)?.35:0);
@@ -376,7 +396,7 @@ function frame(ms) {
   }
   if(mode==='breaker')breaker.tick(dt);
   if(mode==='ending')ending.tick(dt);
-  sound.sync(mode==='gallery'?'menu':mode, game);
+  sound.sync(['gallery','custom'].includes(mode)?'menu':mode, game);
   render(dt); requestAnimationFrame(frame);
 }
 // Attempt autoplay, and unlock automatically on the first ordinary interaction.
