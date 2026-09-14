@@ -178,11 +178,15 @@ function render(dt) {
   } else if (game) {
     if (game.monitor) {
       const state = game.cameraState(game.camera);
-      if(game.camera==='danielroom'){ctx.fillStyle='#000';ctx.fillRect(0,0,w,h);}
+      if(game.camera==='danielroom'){
+        ctx.fillStyle='#000';ctx.fillRect(0,0,w,h);
+        if(game.redFor>0&&!game.alvarAngry){drawPhoto(ASSETS.danielRed,{shade:.12});staticNoise(.45);}
+        if(game.alvarAngry)drawAlvar(false);
+      }
       else {drawPhoto(ASSETS[game.camera][state], { shade: .08 });
         if (game.alvarAngry) drawAlvar(false);
         staticNoise(signalLeft > 0 ? 4 : .7);}
-      $('scene').dataset.view = game.camera + ':' + state;
+      $('scene').dataset.view = game.camera==='danielroom'&&game.redFor>0?'danielroom:red':game.camera + ':' + state;
     } else {
       drawPhoto(ASSETS.office[game.officeState], { shade: game.power <= 0 ? .97 : .06 });
       if(game.daniel){ctx.save();ctx.globalAlpha=.8;drawPhoto(ASSETS.danielFigure,{zoom:.85});ctx.restore();ctx.fillStyle='#d8ca8e';ctx.font='16px monospace';ctx.textAlign='center';ctx.fillText('SE BORT',w/2,h*.82);ctx.textAlign='start';}
@@ -345,8 +349,9 @@ function frame(ms) {
     if(!paused){memory.tick(dt);if(memoryDirection)memory.move(...memoryDirection);memoryBeat-=dt;if(memoryBeat<=0){sound.chip(Math.floor(memory.age)%4);memoryBeat=.65;}if(memory.note!==undefined){sound.chip(memory.note);delete memory.note;}}
     memoryView.draw(memory);
     $('memoryText').textContent=paused?'PAUSE / ESC FOR Å FORTSETTE':memory.messageFor>0?memory.message:memory.story.task;
-    $('memoryCount').textContent=memory.collected.length+'/3 · '+(memory.collected.length===3?'GÅ TIL STOLEN ØVERST TIL HØYRE':memory.story.task);
-    $('memoryFinish').hidden=!memory.done;
+    $('memoryCount').textContent=memory.objective;
+    $('memoryFinish').hidden=!memory.done||memory.level===2;
+    if(memory.level===2&&memory.done)$('memoryFinish').click();
   }
   if(mode==='epilogue'&&epilogue){
     sound.loop('rain',['outside','drive','arrival'].includes(epilogue.phase)?.35:0);
@@ -365,8 +370,12 @@ function frame(ms) {
   render(dt); requestAnimationFrame(frame);
 }
 // Attempt autoplay, and unlock automatically on the first ordinary interaction.
-const unlockAudio = () => { if (mode!=='ending' && !paused) sound.start().catch(() => {}); };
+const unlockAudio = () => { if (mode!=='ending' && (!paused||mode==='menu'||mode==='gallery')) sound.start().catch(() => {}); };
 window.addEventListener('pointerdown', unlockAudio, { capture: true });
+window.addEventListener('click', unlockAudio, { capture: true });
+window.addEventListener('touchend', unlockAudio, { capture: true });
+window.addEventListener('pageshow', unlockAudio);
+window.addEventListener('focus', unlockAudio);
 window.addEventListener('keydown', unlockAudio, { capture: true });
 $('wind').addEventListener('pointerdown', e => { e.preventDefault(); if (!paused) game?.setWinding(true); $('wind').setPointerCapture(e.pointerId); });
 for (const event of ['pointerup', 'pointercancel', 'lostpointercapture']) $('wind').addEventListener(event, () => game?.setWinding(false));

@@ -83,3 +83,12 @@ test('Alvar is irreversible, disables defenses, allows all cameras, attacks in 2
     assert.equal(n.status, 'lost'); assert.equal(n.killer, 'alvar');
   }
 });
+test('Red Daniel camera apparition jingles once only when observed',()=>{
+ const g=new Night(1,()=>0);g.redIn=0;g.tickRedFace(.1);
+ assert.ok(g.redFor>0);assert.equal(g.events.includes('jingle'),false);
+ g.monitor=true;g.camera='danielroom';g.tickRedFace(.1);
+ assert.equal(g.events.filter(e=>e==='jingle').length,1);
+ g.tickRedFace(.1);g.camera='stage';g.tickRedFace(.1);g.camera='danielroom';g.tickRedFace(.1);
+ assert.equal(g.events.filter(e=>e==='jingle').length,1);
+ g.alvarAngry=true;g.tickRedFace(.1);assert.equal(g.redFor,0);
+});

@@ -15,6 +15,7 @@ class Night {
     this.musicBox = 100; this.winding = false; this.alvarAngry = false;
     this.alvarIn = null; this.killer = null; this.deniedFor = 0;
     this.daniel = false; this.danielStare = 0; this.danielCooldown = 35;
+    this.redIn=18+random()*22;this.redFor=0;this.redSeen=false;
     this.route = random() < .5
       ? ['gang', 'kjokken', 'vaskerom', 'kjokken', 'stua', 'gang', 'office']
       : ['gang', 'alvar', 'gang', 'stua', 'gang', 'office'];
@@ -82,10 +83,20 @@ class Night {
     this.musicBox = 0; this.alvarAngry = true; this.alvarIn = 20 + this.random() * 30;
     this.winding = false; this.light = false; this.door = false; this.events.push('alvar');
   }
+  tickRedFace(dt) {
+    if(this.alvarAngry){this.redFor=0;return;}
+    if(this.redFor>0)this.redFor=Math.max(0,this.redFor-dt);
+    else {
+      this.redIn-=dt;
+      if(this.redIn<=0){this.redIn=30+this.random()*35;if(this.random()<.4){this.redFor=5;this.redSeen=false;}}
+    }
+    if(this.redFor>0&&this.monitor&&this.camera==='danielroom'&&!this.redSeen){this.redSeen=true;this.events.push('jingle');}
+  }
   tick(dt) {
     if (this.status !== 'playing' || !Number.isFinite(dt) || dt <= 0) return;
     this.time = Math.min(240, this.time + dt); this.deniedFor = Math.max(0, this.deniedFor - dt);
     this.danielCooldown = Math.max(0, this.danielCooldown - dt);
+    this.tickRedFace(dt);
     if (this.alvarAngry) {
       this.alvarIn -= dt;
       if (this.alvarIn <= 0) this.lose('alvar');

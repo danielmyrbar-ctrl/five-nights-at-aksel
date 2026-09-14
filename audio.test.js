@@ -2,6 +2,16 @@ const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const {Sound,AUDIO_FILES}=require('./audio');
 const fs=require('node:fs');
+test('Menu retries after initial autoplay failure without toggling mute',async()=>{
+ const before=global.document;let attempts=0;const listeners={};
+ const media={paused:true,muted:false,volume:0,addEventListener:(event,fn)=>listeners[event]=fn,
+ play(){attempts++;if(attempts===1)return Promise.reject(Error('Autoplay blocked'));this.paused=false;return Promise.resolve();},pause(){this.paused=true;}};
+ global.document={getElementById:()=>media};
+ try{const s=new Sound();await Promise.resolve();assert.equal(media.paused,true);listeners.canplay();await Promise.resolve();assert.equal(media.paused,false);assert.equal(s.muted,false);
+ s.sync('play',{});assert.equal(media.paused,true);listeners.canplay();assert.equal(media.paused,true);
+ s.sync('menu',null);assert.equal(media.paused,false);
+ }finally{global.document=before;}
+});
 test('One undecodable sound cannot reject loading or prevent other sounds from loading',async()=>{
  const oldWindow=global.window,oldFetch=global.fetch,oldWarn=console.warn;
  let calls=0;global.window={AudioContext:class {constructor(){this.state='running';}createGain(){return {gain:{},connect(){}};} async decodeAudioData(){if(++calls===1)throw Error('unknown content type');return {};}}};

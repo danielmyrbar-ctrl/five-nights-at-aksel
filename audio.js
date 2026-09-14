@@ -10,7 +10,18 @@ class Sound {
     this.buffers = {}; this.loops = {}; this.shots = new Set(); this.muted = false; this.loading = {}; this.mode = 'menu';
     // Stream the menu from the first available audio data, rather than decoding the entire track.
     this.menu = typeof document !== 'undefined' ? document.getElementById('menuMusic') : null;
-    if(this.menu){this.menu.volume=.36;this.menu.play().catch(()=>{});}
+    this.menuRetryAt=0;
+    if(this.menu){
+      this.menu.volume=.36;this.menu.muted=false;
+      this.menu.addEventListener('canplay',()=>this.tryMenu());
+      this.tryMenu();
+    }
+  }
+  tryMenu() {
+    if(!this.menu||this.mode!=='menu'||this.muted)return;
+    this.menu.muted=false;this.menu.volume=.36;
+    // Retry a blocked or interrupted initial play when media becomes ready or a gesture arrives.
+    this.menu.play().catch(()=>{});
   }
   ensure(id) {
     if(this.buffers[id])return Promise.resolve(this.buffers[id]);
@@ -36,7 +47,7 @@ class Sound {
     }));
   }
   async start() {
-    if(this.menu && this.mode==='menu')this.menu.play().catch(()=>{});
+    this.tryMenu();
     if (this.ctx && this.ctx.state !== 'running') await this.ctx.resume();
   }
   loop(id, volume) {
@@ -72,6 +83,9 @@ class Sound {
   sync(mode, game) {
     if(this.menu && mode!==this.mode){if(mode==='menu')this.menu.play().catch(()=>{});else this.menu.pause();}
     this.mode=mode;
+    if(mode==='menu'&&this.menu?.paused&&Date.now()>=this.menuRetryAt){
+      this.menuRetryAt=Date.now()+1500;this.tryMenu();
+    }
     if (!this.ctx) return;
     const playing = mode === 'play' && game?.status === 'playing';
     if(!this.menu)this.loop('menu', mode === 'menu' ? .55 : 0);

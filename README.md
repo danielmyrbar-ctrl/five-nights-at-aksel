@@ -75,3 +75,11 @@ Menymusikken strømmes fra HTML-lydspilleren før resten av spillet lastes, uten
 Etter natt 6 går du ut i regnet, finner en rød sedan, kjører østover og går inn i Arkiv 02. Styr med WASD/piltaster eller skjermknappene. E, Enter eller mellomrom bruker bilen og døren når du står nær nok. Escape setter epilogen på pause.
 
 Etter den mystiske avslutningen fader spillet tilbake til menyen og låser opp **SPRITEGALLERI**. Galleriet viser figurene og pikselgrafikken fra epilogen. Bruk forrige/neste eller piltastene; Escape lukker galleriet. Opplåsingen lagres lokalt i nettleseren.
+
+## Minispill og menylyd (versjon 7)
+
+Menylyden prøves på nytt når lyddata er klare, ved tilbakekomst til vinduet og ved vanlige klikk/tastetrykk. Lyd av/på skal ikke være nødvendig; nettleserens regel om brukerinteraksjon gjelder fortsatt. Den klikkbare FNA/A-logoen er fjernet.
+
+Daniel kan vise det røde ansiktet i kamera 07 i fem sekunder. Hver opptreden gir bare én jingle, først når kameraet faktisk viser ansiktet. Alvars raseri overstyrer opptredenen.
+
+Minne 1 krever levering av ett navneskilt om gangen. I minne 2 er du Aksel i verkstedet og leter etter ABS-filament. Funnet utløser en syv sekunders Daniel-sekvens med «you can't» før spillet går videre automatisk. Minne 3 krever opptakene i riktig rekkefølge. Minne 4 har en forfølgende skygge som sender deg til starten, men beholder sporene dine. Minne 5 har et snevert lysfelt. Alle beholder pikselgrafikk, chiptune og den urolige minne-stemningen.
