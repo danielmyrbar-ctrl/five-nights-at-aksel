@@ -1,5 +1,6 @@
 /* Persistent loop sources keep the music box in time while inaudible. */
 const AUDIO_FILES = {
+  movement:'bevegelse-compatible.mp3',movementFinal:'bevegelse2-compatible.mp3',turn:'snu-compatible.mp3',ambiance2:'ambiance2-compatible.mp3',breakerOffice:'office ambiance-compatible.mp3',
   office: 'office ambiance-compatible.mp3', menu: 'menu.mp3', jingle: 'horror jingle.mp3',
   camera: 'camswitch-compatible.mp3', light: 'light-compatible.mp3', arrival: 'knocks-compatible.mp3', door: 'door-compatible.mp3',
   musicbox: 'musicbox-compatible.mp3', rewind: 'rewind-compatible.mp3', angry: 'angryalvar-compatible.mp3', scare: 'jumpscare.mp3',
@@ -77,6 +78,11 @@ class Sound {
     const o=this.ctx.createOscillator(),g=this.ctx.createGain();o.type='square';o.frequency.value=[130.81,155.56,196,123.47][note%4];
     g.gain.setValueAtTime(.025,this.ctx.currentTime);g.gain.exponentialRampToValueAtTime(.001,this.ctx.currentTime+.22);
     o.connect(g).connect(this.master);o.start();o.stop(this.ctx.currentTime+.25);o.onended=()=>{o.disconnect();g.disconnect();};
+  }
+  loadingTone(note=0) {
+    if(!this.ctx||!this.master)return;
+    const o=this.ctx.createOscillator(),g=this.ctx.createGain();o.type='square';o.frequency.value=[880,1174.66,1318.51,1046.5][note%4];
+    g.gain.setValueAtTime(.012,this.ctx.currentTime);g.gain.exponentialRampToValueAtTime(.001,this.ctx.currentTime+.085);o.connect(g).connect(this.master);o.start();o.stop(this.ctx.currentTime+.09);o.onended=()=>{o.disconnect();g.disconnect();};
   }
   resetNight() { this.stopShots(); for (const id of Object.keys(this.loops)) this.stopLoop(id); }
   setMuted(value) { this.muted = value; if (this.master) this.master.gain.value = value ? 0 : .65; if(this.menu)this.menu.muted=value; }

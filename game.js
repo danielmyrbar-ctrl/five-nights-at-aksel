@@ -262,7 +262,7 @@ function finish() {
   } else { sound.stopShots(); sound.play('jingle'); modal('SIGNAL TAPT', 'HAN FANT DEG', game.killer === 'daniel' ? 'Daniel følger ikke dørene. Åpne kameraene for å se bort før han kommer nærmere.' : game.killer === 'alvar' ? 'Musikkboksen gikk tom. Hold inne MUSIC BOX på Alvar-kameraet før den tømmes.' : game.power <= 0 ? 'Strømmen gikk. Vanlig kontorvisning bruker ikke strøm. Slå av utstyret når du ikke trenger det.' : 'Når Aksel står utenfor kontoret, har du bare noen sekunder på å lukke døren. Bankingen varsler at han har kommet. Bruk lyset for å sjekke når han har gått.', 'PRØV IGJEN'); }
 }
 function togglePause() {
-  if(mode==='breaker'){breaker.pause(!breaker.paused);return;}
+  if(mode==='breaker')return;
   if(mode==='epilogue'){paused=!paused;epKeys.clear();epDirection=[0,0];if(paused)sound.ctx?.suspend();else sound.ctx?.resume();$('epPause').textContent=paused?'FORTSETT':'PAUSE';return;}
   if(mode==='ending'){ending.pause(!ending.paused);return;}
   if(mode==='memory'){ paused=!paused;memoryDirection=null;if(paused)sound.ctx?.suspend();else sound.ctx?.resume();return; }
@@ -308,7 +308,7 @@ const secretKeys = new Set();
 window.addEventListener('keyup', e => secretKeys.delete(e.code));
 window.addEventListener('blur', () => secretKeys.clear());
 window.addEventListener('keydown', e => {
-  if(mode==='breaker'){if(e.key==='Escape')breaker.pause(!breaker.paused);else if(['ArrowLeft','ArrowRight',' '].includes(e.key)&&!e.repeat){e.preventDefault();if(!breaker.paused)breaker.game?.look();}return;}
+  if(mode==='breaker'){if(['ArrowLeft','ArrowRight',' '].includes(e.key)&&!e.repeat){e.preventDefault();if(!breaker.paused)breaker.game?.look();}return;}
   if(mode==='gallery'){if(e.key==='Escape')$('galleryClose').click();else if(e.key==='ArrowRight')$('galleryNext').click();else if(e.key==='ArrowLeft')$('galleryPrev').click();return;}
   if(mode==='epilogue'){
     const k=e.key.toLowerCase();if(['arrowup','arrowdown','arrowleft','arrowright','w','a','s','d'].includes(k)){e.preventDefault();epKeys.add(k);}
@@ -335,7 +335,7 @@ window.addEventListener('keydown', e => {
 });
 document.addEventListener('visibilitychange', () => {
   if(document.hidden)secretKeys.clear();
-  if(document.hidden&&mode==='breaker')breaker.pause(true);
+  if(mode==='breaker')breaker.pause(document.hidden);
   if(document.hidden&&mode==='epilogue'&&!paused)togglePause();
   if(document.hidden && mode==='ending' && !ending.paused)ending.pause(true);
   if(document.hidden && mode==='memory' && !paused)togglePause();

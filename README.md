@@ -89,3 +89,7 @@ Minne 1 krever levering av ett navneskilt om gangen. I minne 2 er du Aksel i ver
 Etter 8-bit-minnet må alle fire systemer restartes før natt 4 låses opp. Ruter tar 6 sekunder, 3D Printer 11, Varmepumpe 8 og Kamerasystem 14. Ett system om gangen; arbeidet fortsetter når du ser tilbake på Daniel. Pilknappen eller piltastene snur hodet. Escape pauser. Daniel går bare fremover gjennom stage 0–4, med 7–11 sekunder per steg mens du ser bort. Tom stol gir 14–20 sekunder før jumpscare, uansett synsretning. Tap lar deg prøve denne sekvensen igjen.
 
 Test sekvensen med `node --test breaker.test.js`.
+
+## Lyd og bilde i Daniel-sekvensen (versjon 9)
+
+Snuing bruker en rask 160 ms fading og `snu.wav`; tilbakepilen står til venstre ved sikringsskapet. Daniel-bevegelse bruker `bevegelse.wav`, med `bevegelse2.wav` ved tom stol. Kontorambiente og `ambiance2.wav` går samtidig. Lyse 8-bit-toner følger restartfremgangen, og et animert støylag gir videokorn. Pauseknappen og Escape-pause er fjernet fra denne sekvensen; skjult nettleserfane stopper midlertidig og fortsetter automatisk ved retur. Originale WAV-filer beholdes, og nettleseren bruker kompatible MP3-kopier.

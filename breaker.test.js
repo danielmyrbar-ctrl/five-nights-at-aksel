@@ -13,3 +13,7 @@ test('One reboot at a time, progress continues while watching, all four required
  for(let i=0;i<4;i++){g.look();advance(g,.6);g.reboot(i);g.reboot((i+1)%4);assert.equal(g.active,i);g.look();advance(g,.6);advance(g,g.systems[i].duration);if(i<3)assert.equal(g.status,'playing');}
  assert.equal(g.status,'won');assert.ok(g.systems.every(s=>s.progress===s.duration));
 });
+test('Turning and each movement emit the correct sound event once',()=>{
+ const g=new BreakerGame(()=>0);advance(g,2);g.look();assert.deepEqual(g.events,['turn']);advance(g,.2);assert.equal(g.view,'panel');
+ g.events=[];advance(g,28);assert.equal(g.stage,4);assert.equal(g.events.filter(e=>e==='movement').length,3);assert.equal(g.events.filter(e=>e==='movementFinal').length,1);
+});
